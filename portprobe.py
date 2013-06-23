@@ -30,7 +30,7 @@ class PortProbe():
 
             try:
                 obj = imp.load_module(_module, _file, _path, _description)
-                self.protocol_modules[_module] = obj
+                self.protocol_modules[_module] = obj.get_instance()
             except:
                 raise
 
@@ -53,7 +53,6 @@ class PortProbe():
         except socket.timeout:
             # This is probably a send-first protocol.
             # Can deal with this below at the data check.
-            print("Probably send-first...")
             pass
         except:
             raise
@@ -64,8 +63,6 @@ class PortProbe():
                        if protocol.matches_protocol(data)]
         else:
             matches = self.speak_second
-
-        print("Potential matches:", matches)
 
         if len(matches) == 0:
             # No protocols matched...
@@ -117,8 +114,8 @@ if __name__ == '__main__':
 
     p = PortProbe()
 
-    p.probe('74.125.225.168', 80) # Google HTTP
-    #p.probe('64.4.17.176', 21) # Microsoft FTP
+    #p.probe('74.125.225.168', 80) # Google HTTP
+    p.probe('64.4.17.176', 21) # Microsoft FTP
     #p.probe('63.245.215.46', 21) # Mozilla FTP
     #p.probe('213.232.93.3', 6667) # Freenode IRC
     #p.probe('130.239.18.160', 6667) # OFTC IRC

@@ -4,40 +4,33 @@
 # TODO: Parse status codes so we can make some better decisions.
 # TODO: Follow a default redirect based on status codes.
 
-import re
+from protocol import Protocol
 
-# Module-specific attributes
-attributes = {
-    "NAME": 'http',
-    "MODULE_SPEAKS_PROTOCOL": True,
-    "PROTOCOL_DEFAULT_PORTS": [80, 1080, 8080],
-    "PROTOCOL_SPEAKS_FIRST": False,
-    "PATTERN": r"HTTP.+?\s\d{3}\s.+?"
-}
+class HTTPProtocol(Protocol):
+    def __init__(self):
+        Protocol.__init__(self)
+        # Module-specific attributes
+        self.attributes = {
+            "NAME": 'http',
+            "MODULE_SPEAKS_PROTOCOL": True,
+            "PROTOCOL_DEFAULT_PORTS": [80, 1080, 8080],
+            "PROTOCOL_SPEAKS_FIRST": False,
+            "PATTERN": r"HTTP.+?\s\d{3}\s.+?"
+        }
+        self.compile_pattern()
 
-regex = re.compile(attributes['PATTERN'])
-buf = ''
+    def on_connect(self, probe):
+        probe.reply("GET / HTTP/1.0\r\n\r\n")
 
+    def on_recv(self, data, probe):
+        self.buf += data
 
-def matches_protocol(packet):
-    if regex.match(packet) is not None:
-        return True
-    else:
-        return False
-
-
-def on_connect(probe):
-    probe.reply("GET / HTTP/1.0\r\n\r\n")
-
-
-def on_recv(data, probe):
-    global buf
-    buf += data
+    def on_close(self, probe):
+        probe.completed(self.buf)
 
 
-def on_close(probe):
-    global buf
-    probe.completed(buf)
+def get_instance():
+    return HTTPProtocol()
 
 if __name__ == '__main__':
-    pass
+    p = HTTPProtocol()
