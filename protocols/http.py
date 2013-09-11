@@ -6,6 +6,7 @@
 
 from protocol import Protocol
 
+
 class HTTPProtocol(Protocol):
     def __init__(self):
         Protocol.__init__(self)

@@ -1,1 +1,15 @@
 A port probing script that attempts to identify protocols and gain maximum information from minimal interaction.
+
+Example (buffers truncated for clarity):
+$ cat testfile.txt
+130.239.18.160:6667
+63.245.215.46:21
+74.125.225.168:80
+$ python portprobe.py -f testfile.txt --json -o out.txt
+Probing 130.239.18.160:6667
+Probing 63.245.215.46:21
+Probing 74.125.225.168:80
+$ cat out.txt
+{"buffer": ":solenoid.oftc.net NOTICE AUTH :*** Looking up your hostname...\r\n", "ip": "130.239.18.160", "protocol": "irc", "port": 6667}
+{"buffer": "220-\r\n220-   ftp.mozilla.org / archive.mozilla.org - files are in /pub/mozilla.org\r\n", "ip": "63.245.215.46", "protocol": "ftp", "port": 21}
+{"buffer": "HTTP/1.0 200 OK\r\nDate: Wed, 11 Sep 2013 18:47:15 GMT\r\n","ip": "74.125.225.168", "protocol": "http", "port": 80}

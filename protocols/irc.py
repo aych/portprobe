@@ -2,6 +2,8 @@
 # This module is a very basic IRC protocol handler that attempts to connect to a server and get a list of channels.
 #
 from protocol import Protocol
+from string import ascii_letters, digits
+from random import choice
 
 
 class IRCProtocol(Protocol):
@@ -18,6 +20,10 @@ class IRCProtocol(Protocol):
         self.compile_pattern()
         self.unprocessed = ''
         self.registered = False
+
+    def generate_name(self, length=8):
+        chars = ascii_letters + digits
+        return ''.join(choice(chars) for x in range(length))
 
     def on_recv(self, data, probe):
         reply = ''
@@ -57,8 +63,9 @@ class IRCProtocol(Protocol):
                     elif cmdparams[1] == 'NOTICE':
                         if cmdparams[2] in ['AUTH', '*']:
                             if not self.registered:
-                                reply = "NICK probey\n"
-                                reply += "USER probey 8 * :probey\n"
+                                name = self.generate_name()
+                                reply = "NICK {name}\n".format(name=name)
+                                reply += "USER {name} 8 * :{name}\n".format(name=name)
                                 self.registered = True
             else:
                 cmd = params[0].rstrip(None)
@@ -68,8 +75,9 @@ class IRCProtocol(Protocol):
                 else:
                     # Unrecognized non-command
                     pass
-        self.buf += reply
-        probe.reply(reply)
+        if not probe.complete and len(reply) > 0:
+            self.buf += reply
+            probe.reply(reply)
 
 
 def get_instance():
