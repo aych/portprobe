@@ -16,7 +16,7 @@ class HTTPProtocol(Protocol):
             "MODULE_SPEAKS_PROTOCOL": True,
             "PROTOCOL_DEFAULT_PORTS": [80, 1080, 8080],
             "PROTOCOL_SPEAKS_FIRST": False,
-            "PATTERN": r"HTTP.+?\s\d{3}\s.+?"
+            "PATTERN": r"^HTTP.+?\s\d{3}\s.+?"
         }
         self.compile_pattern()
 
@@ -27,6 +27,8 @@ class HTTPProtocol(Protocol):
         self.buf += data
 
     def on_close(self, probe):
+        if self.matches_protocol(self.buf):
+            probe.result['matched'] = True
         probe.completed(self.buf)
 
 

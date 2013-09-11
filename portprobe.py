@@ -10,6 +10,8 @@ import socket
 BUFFER_SIZE = 4096
 SOCKET_TIMEOUT = 2
 
+# TODO: When the protocol speaks first and there are multiple matches, don't have it create a new socket to try the first one.
+
 
 class PortProbe():
     def __init__(self, starting_callback, completion_callback, limit_probes=True):
@@ -49,16 +51,21 @@ class PortProbe():
         try:
             self.s.connect((ip, port))
             return True
-        except Exception, e:
-            print("Error connecting to {ip}:{port} -> {error}".format(ip=ip, port=port, error=e.message))
+        except socket.error, e:
+            # Connection refused
+            if e.errno == 61:
+                print("Connection refused for {ip}:{port}".format(ip=ip, port=port))
+            else:
+                print("Error connecting to {ip}:{port} -> {errno} {error}".format(ip=ip,
+                                                                                port=port,
+                                                                                errno=e.errno,
+                                                                                error=e.message))
             return False
 
     def probe(self, ip, port):
         self.on_probe_start(ip, port)
-        self.ip = ip
-        self.port = port
-        self.matched_protocol = ''
         self.complete = False
+        self.result = {"ip": ip, "port": port}
         if not self.probe_connect(ip, port):
             return
 
@@ -87,7 +94,7 @@ class PortProbe():
             # Awesome, we can do something.
             # Does the plugin speak the protocol?
             prot = matches[0]
-            self.matched_protocol = prot.attributes['NAME']
+            self.result['protocol'] = prot.attributes['NAME']
             if prot.attributes['MODULE_SPEAKS_PROTOCOL']:
                 if prot.attributes['PROTOCOL_SPEAKS_FIRST']:
                     prot.on_recv(data, self)
@@ -118,6 +125,9 @@ class PortProbe():
                 self.probe_with_protocol(ip, port, protocol, spoke_first)
 
     def probe_with_protocol(self, ip, port, protocol, spoke_first):
+        self.complete = False
+        self.result = {"ip": ip, "port": port}
+        self.result['protocol'] = protocol.attributes['NAME']
         if not self.probe_connect(ip, port):
             return
 
@@ -147,7 +157,8 @@ class PortProbe():
             print("Error {error} while attempting reply: {data}".format(error=se.message, data=data))
 
     def completed(self, buf):
-        self.on_completed(self.ip, self.port, self.matched_protocol, buf)
+        self.result['buffer'] = buf
+        self.on_completed(self.result)
         self.complete = True
         self.s.close()
 
@@ -157,10 +168,9 @@ def probe_start(ip, port):
         print("Probing {ip}:{port}".format(ip=ip, port=port))
 
 
-def probe_complete(ip, port, protocol, buf):
+def probe_complete(result):
     if options.json:
-        obj = {"ip": ip, "port": port, "protocol": protocol, "buffer": buf}
-        output = json.dumps(obj, ensure_ascii=False)
+        output = json.dumps(result, ensure_ascii=False)
         if options.output_file is not None:
             with open(options.output_file, "a") as f:
                 f.write(output)
@@ -168,7 +178,10 @@ def probe_complete(ip, port, protocol, buf):
         else:
             print(output)
     else:
-        print("{ip}:{port}:{protocol}\n{buffer}".format(ip=ip, port=port, protocol=protocol, buffer=buf))
+        print("{ip}:{port}:{protocol}\n{buffer}".format(ip=result['ip'],
+                                                        port=result['port'],
+                                                        protocol=result['protocol'],
+                                                        buffer=result['buffer']))
 
 
 if __name__ == '__main__':
@@ -199,14 +212,16 @@ if __name__ == '__main__':
     parser.add_option('-j', '--json',
                       dest='json',
                       help='Output as JSON',
-                      action='store_false')
+                      default=False,
+                      action='store_true')
     parser.add_option('-l', '--limit-probes',
-                      dest='json',
+                      dest='limit_probes',
                       help='Limit probes to protocols known to operate on this port',
+                      default=False,
                       action='store_true')
     (options, args) = parser.parse_args()
 
-    p = PortProbe(probe_start, probe_complete)
+    p = PortProbe(probe_start, probe_complete, options.limit_probes)
 
     if options.file is not None:
         options.json = True
