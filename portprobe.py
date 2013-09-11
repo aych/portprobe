@@ -95,6 +95,7 @@ class PortProbe():
             # Does the plugin speak the protocol?
             prot = matches[0]
             self.result['protocol'] = prot.attributes['NAME']
+            self.result['matched'] = True
             if prot.attributes['MODULE_SPEAKS_PROTOCOL']:
                 if prot.attributes['PROTOCOL_SPEAKS_FIRST']:
                     prot.on_recv(data, self)
