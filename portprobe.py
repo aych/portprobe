@@ -151,6 +151,8 @@ class PortProbe():
                     protocol.on_recv(data, self)
 
     def reply(self, data):
+        if len(data) == 0:
+            return
         try:
             self.s.send(data)
         except socket.error, se:
